@@ -18,7 +18,7 @@ class ImageApp:
         self.canvas.bind("<Button-1>", self.place_dot)
         self.canvas.bind("<B1-Motion>", self.move_dot)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
-        #self.canvas.bind("<Motion>", self.show_index_on_hover)
+        #self.canvas.bind("<Motion>", self.show_index_on_hover) # debug : check landmark indices
 
         menu = tk.Menu(root)
         root.config(menu=menu)
@@ -29,8 +29,6 @@ class ImageApp:
         file_menu.add_command(label="Open file...", command=self.open_image)
         file_menu.add_command(label="Save", command=self.save_landmarks)
         file_menu.add_command(label="Exit", command=root.quit)
-
-
 
         self.image_files = []  # To store list of images in a directory
         self.current_image_index = None  # To keep track of which image in the list is currently open
@@ -53,14 +51,13 @@ class ImageApp:
 
         self.dot_lines = {}  # A dictionary to store lines associated with each dot
 
-        #self.image_path = "/home/eole/Downloads/Chimp_FilmRip_MVP2MostVerticalPrimate.2001.0119_0.png"
-        self.open_image()
 
-    # def show_index_on_hover(self, event):
-    #     # Get the dot's index from the tag
-    #     dot_idx = event.widget.gettags(event.widget.find_withtag("current"))[0]
-    #     # Show the index using a label, tooltip, or print
-    #     print(dot_idx)
+
+    def show_index_on_hover(self, event):
+        # Get the dot's index from the tag
+        dot_idx = event.widget.gettags(event.widget.find_withtag("current"))[0]
+        # Show the index using a label, tooltip, or print
+        print(dot_idx)
     
     def get_color(self, index, line=False):
         if line:
@@ -161,6 +158,15 @@ class ImageApp:
             self.current_image_index = self.image_files.index(file_path)
 
         self.image_path = file_path
+
+        # Clear previous landmarks and their connecting lines
+        for dot in self.dots.keys():
+            self.canvas.delete(dot)
+            if dot in self.dot_lines:
+                for line in self.dot_lines[dot]:
+                    self.canvas.delete(line)
+        self.dots = {}
+        self.dot_lines = {}
 
         # Extract the filename from the file_path
         filename = os.path.basename(file_path)
