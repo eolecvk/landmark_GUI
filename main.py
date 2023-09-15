@@ -9,6 +9,7 @@ class ImageApp:
     def __init__(self, root):
         self.root = root
         self.root.title('Image Dot Mover')
+        self.root.bind("<Control-s>", lambda event=None: self.save_landmarks())
 
         self.canvas = Canvas(root)
         self.canvas.pack(fill=tk.BOTH, expand=tk.YES)
@@ -16,6 +17,8 @@ class ImageApp:
         self.canvas.bind("<Button-1>", self.place_dot)
         self.canvas.bind("<B1-Motion>", self.move_dot)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
+        self.canvas.bind("<Motion>", self.show_index_on_hover)
+
 
         menu = tk.Menu(root)
         root.config(menu=menu)
@@ -26,7 +29,9 @@ class ImageApp:
         file_menu.add_command(label="Save", command=self.save_landmarks)
         file_menu.add_command(label="Exit", command=root.quit)
 
-        self.dot_size = 5
+        self.dot_size = 3
+        self.line_size = 1
+
         self.image_path = None
         self.image = None
         self.photo = None
@@ -35,11 +40,46 @@ class ImageApp:
 
         # Create a list of 68 distinct colors
         self.colors = plt.cm.jet(np.linspace(0, 1, 68))
+
+        self.dot_lines = {}  # A dictionary to store lines associated with each dot
+
+        self.image_path = "/home/eole/Downloads/Chimp_FilmRip_MVP2MostVerticalPrimate.2001.0119_0.png"
+        self.open_image()
+
+    def show_index_on_hover(self, event):
+        # Get the dot's index from the tag
+        dot_idx = event.widget.gettags(event.widget.find_withtag("current"))[0]
+        # Show the index using a label, tooltip, or print
+        print(dot_idx)
     
-    def get_color(self, index):
-        # Convert RGB from 0-1 to 0-255 range
-        r, g, b, a = self.colors[index]
-        return "#{:02x}{:02x}{:02x}".format(int(r*255), int(g*255), int(b*255))
+    def get_color(self, index, line=False):
+        if line:
+            color_groups = [
+                (range(0, 17), 'red'), # face contour
+                (range(17, 22), 'blue'), # left eyebrow
+                (range(22, 27), 'blue'), # right eyebrow
+                (range(27, 36), 'purple'), # nose
+                (range(36, 42), 'yellow'), # left eye
+                (range(42, 48), 'yellow'), # right eye
+                (range(48, 69), 'magenta') # mouth
+            ]
+        else:
+            color_groups = [
+            ((30, 36, 39, 42, 45, 48, 68), 'white'), # special landmarks
+            (range(0, 17), 'red'), # face contour
+            (range(17, 22), 'blue'), # left eyebrow
+            (range(22, 27), 'blue'), # right eyebrow
+            (range(27, 36), 'purple'), # nose
+            (range(36, 42), 'yellow'), # left eye
+            (range(42, 48), 'yellow'), # right eye
+            (range(48, 69), 'magenta') # mouth
+        ]
+
+        for r, color in color_groups:
+            if index in r:
+                return color
+
+        return "#000000"  # default color if index is outside defined ranges
 
 
     def read_landmarks_from_file(self, img_path):
@@ -70,7 +110,8 @@ class ImageApp:
                 f.write("%f %f\n" % (x, y))
 
     def open_image(self):
-        file_path = filedialog.askopenfilename()
+        #file_path = filedialog.askopenfilename()
+        file_path = self.image_path
         if not file_path:
             return
 
@@ -99,10 +140,33 @@ class ImageApp:
         landmarks = self.read_landmarks_from_file(file_path)
         scaled_landmarks = [(x*self.width_scale, y*self.height_scale) for x, y in landmarks]
 
-        for idx, (x, y) in enumerate(scaled_landmarks):
-            dot = self.canvas.create_oval(x - self.dot_size, y - self.dot_size, x + self.dot_size, y + self.dot_size, fill=self.get_color(idx))
-            self.dots[dot] = (x, y, idx)
+        prev_dot = None
 
+        for idx, (x, y) in enumerate(scaled_landmarks):
+            dot = self.canvas.create_oval(x - self.dot_size, y - self.dot_size, x + self.dot_size, y + self.dot_size, fill=self.get_color(idx), tags=str(idx))
+            center_x = (x + self.dot_size + x - self.dot_size) / 2
+            center_y = (y + self.dot_size + y - self.dot_size) / 2
+            self.dots[dot] = (center_x, center_y, idx)
+
+            # Connect the dots based on the specified groups
+            should_connect = any([
+                idx-1 in group and idx in group
+                for group in [
+                    range(0, 17), range(17, 22), range(22, 27), range(27, 36), 
+                    range(36, 42), range(42, 48), range(48, 69)
+                ]
+            ])
+            
+            if prev_dot and should_connect:
+                prev_dot_center = ((self.canvas.coords(prev_dot)[0] + self.canvas.coords(prev_dot)[2]) / 2, (self.canvas.coords(prev_dot)[1] + self.canvas.coords(prev_dot)[3]) / 2)
+                dot_center = ((self.canvas.coords(dot)[0] + self.canvas.coords(dot)[2]) / 2, (self.canvas.coords(dot)[1] + self.canvas.coords(dot)[3]) / 2)
+                line = self.canvas.create_line(prev_dot_center, dot_center, fill=self.get_color(idx, line=True), width=self.line_size)
+                                
+                # Store the line references in the dictionary
+                self.dot_lines[prev_dot] = self.dot_lines.get(prev_dot, []) + [line]
+                self.dot_lines[dot] = self.dot_lines.get(dot, []) + [line]
+
+            prev_dot = dot
 
     def place_dot(self, event):
         self.active_dot = None
@@ -115,7 +179,9 @@ class ImageApp:
         if self.active_dot:
             x, y, idx = self.dots[self.active_dot]  # Use self.active_dot as the key
             self.canvas.move(self.active_dot, event.x - x, event.y - y)
-            self.dots[self.active_dot] = (event.x, event.y, idx)
+            center_x = (event.x + self.dot_size + event.x - self.dot_size) / 2
+            center_y = (event.y + self.dot_size + event.y - self.dot_size) / 2
+            self.dots[self.active_dot] = (center_x, center_y, idx)
 
 
     def on_release(self, event):
@@ -123,17 +189,28 @@ class ImageApp:
 
             
     def move_dot(self, event):
-        dot = self.canvas.find_closest(event.x, event.y)[0]
-        x, y, idx = self.dots[dot]  # Extract all three values
-        self.canvas.move(dot, event.x - x, event.y - y)
-        self.dots[dot] = (event.x, event.y, idx)  # Store all three values back
+        if self.active_dot:
+            x, y, idx = self.dots[self.active_dot]
+            self.canvas.move(self.active_dot, event.x - x, event.y - y)
+            center_x = (event.x + self.dot_size + event.x - self.dot_size) / 2
+            center_y = (event.y + self.dot_size + event.y - self.dot_size) / 2
+            self.dots[self.active_dot] = (center_x, center_y, idx)
 
-    def show_index_on_hover(self, event):
-        for dot, (x, y, idx) in self.dots.items():
-            if x - self.dot_size <= event.x <= x + self.dot_size and y - self.dot_size <= event.y <= y + self.dot_size:
-                self.canvas.create_text(event.x, event.y - 10, text=str(idx), tags="indexTag")
-            else:
-                self.canvas.delete("indexTag")
+            # Update connected lines for this dot
+            if self.active_dot in self.dot_lines:
+                for line in self.dot_lines[self.active_dot]:
+                    coords = list(self.canvas.coords(line))
+                    # Determine which end of the line to update based on proximity
+                    center_x, center_y = self.dots[self.active_dot][:2]
+                    if self._distance(coords[:2], (x, y)) < self._distance(coords[2:], (x, y)):
+                        coords[:2] = [center_x, center_y]
+                    else:
+                        coords[2:] = [center_x, center_y]
+                    self.canvas.coords(line, *coords)
+
+    def _distance(self, point1, point2):
+        return ((point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2) ** 0.5
+
 
 if __name__ == "__main__":
     root = tk.Tk()
