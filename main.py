@@ -4,6 +4,7 @@ from tkinter import Canvas
 from PIL import Image, ImageTk
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 
 class ImageApp:
     def __init__(self, root):
@@ -19,15 +20,24 @@ class ImageApp:
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
         #self.canvas.bind("<Motion>", self.show_index_on_hover)
 
-
         menu = tk.Menu(root)
         root.config(menu=menu)
 
         file_menu = tk.Menu(menu)
         menu.add_cascade(label="File", menu=file_menu)
-        file_menu.add_command(label="Open...", command=self.open_image)
+        file_menu.add_command(label="Open directory...", command=self.open_directory)
+        file_menu.add_command(label="Open file...", command=self.open_image)
         file_menu.add_command(label="Save", command=self.save_landmarks)
         file_menu.add_command(label="Exit", command=root.quit)
+
+
+
+        self.image_files = []  # To store list of images in a directory
+        self.current_image_index = None  # To keep track of which image in the list is currently open
+
+        root.bind('<Left>', self.previous_image)
+        root.bind('<Right>', self.next_image)
+
 
         self.dot_size = 3
         self.line_size = 1
@@ -109,12 +119,56 @@ class ImageApp:
             for x, y in scaled_landmarks:
                 f.write("%f %f\n" % (x, y))
 
-    def open_image(self):
-        file_path = filedialog.askopenfilename()
+
+
+    def open_directory(self):
+        dir_path = filedialog.askdirectory()
+        if dir_path:
+            # Assuming images are in PNG format for this example
+            # You can adjust this to handle other image formats or even multiple formats
+            images = sorted([os.path.join(dir_path, fname) for fname in os.listdir(dir_path)
+                        if any([fname.endswith(valid_extension) for valid_extension in ['.png', '.jpg', '.jpeg']] )])
+            if images:
+                self.open_image(images[0])
+                # Store all images in a list for navigation purposes
+                self.image_files = images
+                self.current_image_index = 0
+            else:
+                messagebox.showerror("Error", "No image files found in the selected directory!")
+                return
+
+
+    def previous_image(self, event=None):
+        if self.image_files and self.current_image_index > 0:
+            self.current_image_index -= 1
+            self.open_image(self.image_files[self.current_image_index])
+
+    def next_image(self, event=None):
+        if self.image_files and self.current_image_index < len(self.image_files) - 1:
+            self.current_image_index += 1
+            self.open_image(self.image_files[self.current_image_index])
+
+
+    def open_image(self, file_path=None):
+        
+        if file_path is None:
+            file_path = filedialog.askopenfilename()
+
         if not file_path:
             return
 
+        if file_path in self.image_files:
+            self.current_image_index = self.image_files.index(file_path)
+
         self.image_path = file_path
+
+        # Extract the filename from the file_path
+        filename = os.path.basename(file_path)
+        
+        # Update the title of the main window
+        self.root.title(f'Image Dot Mover - {filename}')
+
+
         image = Image.open(file_path)
         self.width_scale = 800 / image.width
         self.height_scale = 800 / image.height
