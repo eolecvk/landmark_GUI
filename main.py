@@ -17,7 +17,7 @@ class ImageApp:
         self.canvas.bind("<Button-1>", self.place_dot)
         self.canvas.bind("<B1-Motion>", self.move_dot)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
-        self.canvas.bind("<Motion>", self.show_index_on_hover)
+        #self.canvas.bind("<Motion>", self.show_index_on_hover)
 
 
         menu = tk.Menu(root)
@@ -43,14 +43,14 @@ class ImageApp:
 
         self.dot_lines = {}  # A dictionary to store lines associated with each dot
 
-        self.image_path = "/home/eole/Downloads/Chimp_FilmRip_MVP2MostVerticalPrimate.2001.0119_0.png"
+        #self.image_path = "/home/eole/Downloads/Chimp_FilmRip_MVP2MostVerticalPrimate.2001.0119_0.png"
         self.open_image()
 
-    def show_index_on_hover(self, event):
-        # Get the dot's index from the tag
-        dot_idx = event.widget.gettags(event.widget.find_withtag("current"))[0]
-        # Show the index using a label, tooltip, or print
-        print(dot_idx)
+    # def show_index_on_hover(self, event):
+    #     # Get the dot's index from the tag
+    #     dot_idx = event.widget.gettags(event.widget.find_withtag("current"))[0]
+    #     # Show the index using a label, tooltip, or print
+    #     print(dot_idx)
     
     def get_color(self, index, line=False):
         if line:
@@ -110,8 +110,7 @@ class ImageApp:
                 f.write("%f %f\n" % (x, y))
 
     def open_image(self):
-        #file_path = filedialog.askopenfilename()
-        file_path = self.image_path
+        file_path = filedialog.askopenfilename()
         if not file_path:
             return
 
