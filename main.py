@@ -140,15 +140,18 @@ class ImageApp:
         landmarks = self.read_landmarks_from_file(file_path)
         scaled_landmarks = [(x*self.width_scale, y*self.height_scale) for x, y in landmarks]
 
-        prev_dot = None
-
+        # Step 1: Create all dots first
         for idx, (x, y) in enumerate(scaled_landmarks):
             dot = self.canvas.create_oval(x - self.dot_size, y - self.dot_size, x + self.dot_size, y + self.dot_size, fill=self.get_color(idx), tags=str(idx))
             center_x = (x + self.dot_size + x - self.dot_size) / 2
             center_y = (y + self.dot_size + y - self.dot_size) / 2
             self.dots[dot] = (center_x, center_y, idx)
 
-            # Connect the dots based on the specified groups
+        # Step 2: Connect the dots based on the specified groups
+        prev_dot = None
+        for idx, (x, y) in enumerate(scaled_landmarks):
+            dot = list(self.dots.keys())[idx]
+
             should_connect = any([
                 idx-1 in group and idx in group
                 for group in [
@@ -156,12 +159,12 @@ class ImageApp:
                     range(36, 42), range(42, 48), range(48, 69)
                 ]
             ])
-            
+
             if prev_dot and should_connect:
                 prev_dot_center = ((self.canvas.coords(prev_dot)[0] + self.canvas.coords(prev_dot)[2]) / 2, (self.canvas.coords(prev_dot)[1] + self.canvas.coords(prev_dot)[3]) / 2)
                 dot_center = ((self.canvas.coords(dot)[0] + self.canvas.coords(dot)[2]) / 2, (self.canvas.coords(dot)[1] + self.canvas.coords(dot)[3]) / 2)
                 line = self.canvas.create_line(prev_dot_center, dot_center, fill=self.get_color(idx, line=True), width=self.line_size)
-                                
+
                 # Store the line references in the dictionary
                 self.dot_lines[prev_dot] = self.dot_lines.get(prev_dot, []) + [line]
                 self.dot_lines[dot] = self.dot_lines.get(dot, []) + [line]
