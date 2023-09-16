@@ -18,7 +18,8 @@ class ImageApp:
         self.canvas.bind("<Button-1>", self.place_dot)
         self.canvas.bind("<B1-Motion>", self.move_dot)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
-        #self.canvas.bind("<Motion>", self.show_index_on_hover) # debug : check landmark indices
+        self.canvas.bind("<Motion>", self.show_index_on_hover) # debug : check landmark indices
+        self.prev_dot_idx = None
 
         menu = tk.Menu(root)
         root.config(menu=menu)
@@ -51,13 +52,19 @@ class ImageApp:
 
         self.dot_lines = {}  # A dictionary to store lines associated with each dot
 
-
+        self.open_image('/home/eole/Downloads/Chimp_FilmRip_MVP2MostVerticalPrimate.2001.0119_0.png')
 
     def show_index_on_hover(self, event):
         # Get the dot's index from the tag
         dot_idx = event.widget.gettags(event.widget.find_withtag("current"))[0]
+        
+        if 'current' in dot_idx:
+            return  # Ignore 'current' or if no tags found
+        
         # Show the index using a label, tooltip, or print
-        print(dot_idx)
+        if dot_idx != self.prev_dot_idx:
+            print(int(dot_idx)+1)
+            self.prev_dot_idx = dot_idx
     
     def get_color(self, index, line=False):
         if line:
@@ -211,12 +218,22 @@ class ImageApp:
         for idx, (x, y) in enumerate(scaled_landmarks):
             dot = list(self.dots.keys())[idx]
 
+            # should_connect = any([
+            #     idx-1 in group and idx in group
+            #     for group in [
+            #         range(0, 17), range(17, 22), range(22, 27), range(27, 36), 
+            #         range(36, 42), range(42, 48), range(48, 69)
+            #     ]
+            # ])
+
+            connection_groups = [
+                range(0, 17), range(48, 60), range(60, 68), range(27, 31),
+                range(31, 36), range(17, 22), range(22, 27), range(36, 42),
+                range(42, 48)
+            ]
+
             should_connect = any([
-                idx-1 in group and idx in group
-                for group in [
-                    range(0, 17), range(17, 22), range(22, 27), range(27, 36), 
-                    range(36, 42), range(42, 48), range(48, 69)
-                ]
+                idx-1 in group and idx in group for group in connection_groups
             ])
 
             if prev_dot and should_connect:
@@ -229,6 +246,18 @@ class ImageApp:
                 self.dot_lines[dot] = self.dot_lines.get(dot, []) + [line]
 
             prev_dot = dot
+        
+        # Special case for loops (for example, mouth and eyes)
+        loops = [(59, 48), (67, 60), (41, 36), (42, 47)]
+        for start, end in loops:
+            start_dot = list(self.dots.keys())[start]
+            end_dot = list(self.dots.keys())[end]
+            start_center = ((self.canvas.coords(start_dot)[0] + self.canvas.coords(start_dot)[2]) / 2, (self.canvas.coords(start_dot)[1] + self.canvas.coords(start_dot)[3]) / 2)
+            end_center = ((self.canvas.coords(end_dot)[0] + self.canvas.coords(end_dot)[2]) / 2, (self.canvas.coords(end_dot)[1] + self.canvas.coords(end_dot)[3]) / 2)
+            line = self.canvas.create_line(start_center, end_center, fill=self.get_color(start, line=True), width=self.line_size)
+            self.dot_lines[start_dot] = self.dot_lines.get(start_dot, []) + [line]
+            self.dot_lines[end_dot] = self.dot_lines.get(end_dot, []) + [line]
+
 
     def place_dot(self, event):
         self.active_dot = None
