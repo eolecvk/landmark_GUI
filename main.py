@@ -266,38 +266,34 @@ class ImageApp:
                 self.active_dot = dot
                 break
 
-    def on_drag(self, event):
-        if self.active_dot:
-            x, y, idx = self.dots[self.active_dot]  # Use self.active_dot as the key
-            self.canvas.move(self.active_dot, event.x - x, event.y - y)
-            center_x = (event.x + self.dot_size + event.x - self.dot_size) / 2
-            center_y = (event.y + self.dot_size + event.y - self.dot_size) / 2
-            self.dots[self.active_dot] = (center_x, center_y, idx)
-
-
     def on_release(self, event):
         self.active_dot = None
 
-            
+                
     def move_dot(self, event):
         if self.active_dot:
             x, y, idx = self.dots[self.active_dot]
+            
+            # Move the dot to the new position
             self.canvas.move(self.active_dot, event.x - x, event.y - y)
-            center_x = (event.x + self.dot_size + event.x - self.dot_size) / 2
-            center_y = (event.y + self.dot_size + event.y - self.dot_size) / 2
-            self.dots[self.active_dot] = (center_x, center_y, idx)
+            
+            # New center is essentially the event x and y
+            center_x, center_y = event.x, event.y
 
             # Update connected lines for this dot
             if self.active_dot in self.dot_lines:
                 for line in self.dot_lines[self.active_dot]:
                     coords = list(self.canvas.coords(line))
+                    
                     # Determine which end of the line to update based on proximity
-                    center_x, center_y = self.dots[self.active_dot][:2]
                     if self._distance(coords[:2], (x, y)) < self._distance(coords[2:], (x, y)):
                         coords[:2] = [center_x, center_y]
                     else:
                         coords[2:] = [center_x, center_y]
                     self.canvas.coords(line, *coords)
+
+            # Now update the dots dictionary with the new center
+            self.dots[self.active_dot] = (center_x, center_y, idx)
 
     def _distance(self, point1, point2):
         return ((point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2) ** 0.5
