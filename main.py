@@ -15,8 +15,9 @@ class ImageApp:
         self.canvas = Canvas(root)
         self.canvas.pack(fill=tk.BOTH, expand=tk.YES)
 
+        self.canvas.bind("<Control-Button-1>", self.place_dots)
         self.canvas.bind("<Button-1>", self.place_dot)
-        self.canvas.bind("<B1-Motion>", self.move_dot)
+        self.canvas.bind("<B1-Motion>", self.on_b1_motion)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
         self.canvas.bind("<Motion>", self.show_index_on_hover) # debug : check landmark indices
         self.prev_dot_idx = None
@@ -46,12 +47,24 @@ class ImageApp:
         self.photo = None
         self.dots = {}
         self.active_dot = None
+        self.group_drag = False
 
         # Create a list of 68 distinct colors
         self.colors = plt.cm.jet(np.linspace(0, 1, 68))
 
         self.dot_lines = {}  # A dictionary to store lines associated with each dot
+ 
+        self.color_groups = [
+                (range(0, 17), 'red'), # face contour
+                (range(17, 22), 'blue'), # left eyebrow
+                (range(22, 27), 'blue'), # right eyebrow
+                (range(27, 36), 'purple'), # nose
+                (range(36, 42), 'yellow'), # left eye
+                (range(42, 48), 'yellow'), # right eye
+                (range(48, 69), 'magenta') # mouth
+            ]
 
+        self.connection_groups = [rng for rng, _ in self.color_groups]
         self.open_image('/home/eole/Downloads/Chimp_FilmRip_MVP2MostVerticalPrimate.2001.0119_0.png')
 
     def show_index_on_hover(self, event):
@@ -63,31 +76,14 @@ class ImageApp:
         
         # Show the index using a label, tooltip, or print
         if dot_idx != self.prev_dot_idx:
-            print(int(dot_idx)+1)
+            print(int(dot_idx))
             self.prev_dot_idx = dot_idx
     
     def get_color(self, index, line=False):
-        if line:
-            color_groups = [
-                (range(0, 17), 'red'), # face contour
-                (range(17, 22), 'blue'), # left eyebrow
-                (range(22, 27), 'blue'), # right eyebrow
-                (range(27, 36), 'purple'), # nose
-                (range(36, 42), 'yellow'), # left eye
-                (range(42, 48), 'yellow'), # right eye
-                (range(48, 69), 'magenta') # mouth
-            ]
-        else:
-            color_groups = [
-            ((30, 36, 39, 42, 45, 48, 68), 'white'), # special landmarks
-            (range(0, 17), 'red'), # face contour
-            (range(17, 22), 'blue'), # left eyebrow
-            (range(22, 27), 'blue'), # right eyebrow
-            (range(27, 36), 'purple'), # nose
-            (range(36, 42), 'yellow'), # left eye
-            (range(42, 48), 'yellow'), # right eye
-            (range(48, 69), 'magenta') # mouth
-        ]
+        color_groups = self.color_groups
+        if not line:
+            special_landmarks = ((30, 36, 39, 42, 45, 48, 68), 'white')
+            color_groups.insert(0, special_landmarks)
 
         for r, color in color_groups:
             if index in r:
@@ -197,7 +193,6 @@ class ImageApp:
 
         image = image.resize((new_width, new_height))
         
-        
         self.photo = ImageTk.PhotoImage(image)
         self.canvas.config(scrollregion=self.canvas.bbox(tk.ALL))
         self.canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)
@@ -218,22 +213,8 @@ class ImageApp:
         for idx, (x, y) in enumerate(scaled_landmarks):
             dot = list(self.dots.keys())[idx]
 
-            # should_connect = any([
-            #     idx-1 in group and idx in group
-            #     for group in [
-            #         range(0, 17), range(17, 22), range(22, 27), range(27, 36), 
-            #         range(36, 42), range(42, 48), range(48, 69)
-            #     ]
-            # ])
-
-            connection_groups = [
-                range(0, 17), range(48, 60), range(60, 68), range(27, 31),
-                range(31, 36), range(17, 22), range(22, 27), range(36, 42),
-                range(42, 48)
-            ]
-
             should_connect = any([
-                idx-1 in group and idx in group for group in connection_groups
+                idx-1 in group and idx in group for group in self.connection_groups
             ])
 
             if prev_dot and should_connect:
@@ -265,38 +246,88 @@ class ImageApp:
             if x - self.dot_size <= event.x <= x + self.dot_size and y - self.dot_size <= event.y <= y + self.dot_size:
                 self.active_dot = dot
                 break
+    
+    def place_dots(self, event):
+        self.active_dots = None
+        self.group_drag = True
+        self.place_dot(event)
+        self.active_dots = self.find_active_dots()
 
+    def find_active_dots(self):
+        if self.active_dot is None:
+            return []
+        if self.active_dot and not self.active_dots:
+            self.active_dots = self.find_all_connected_dots(self.dots[self.active_dot][2])
+            #self.active_dots.add(self.active_dot)
+        
+        return list(self.active_dots)
+
+        
     def on_release(self, event):
         self.active_dot = None
+        self.group_drag = False
 
-                
-    def move_dot(self, event):
+
+    def on_b1_motion(self, event):
         if self.active_dot:
             x, y, idx = self.dots[self.active_dot]
+            dx, dy = event.x - x, event.y - y
             
-            # Move the dot to the new position
-            self.canvas.move(self.active_dot, event.x - x, event.y - y)
+            # Move active dot and update its position
+            self.canvas.move(self.active_dot, dx, dy)
+            self.dots[self.active_dot] = (event.x, event.y, idx)
             
-            # New center is essentially the event x and y
-            center_x, center_y = event.x, event.y
+            # Move and update positions for dots connected to active dot
+            if self.group_drag:
+                for dot in self.active_dots:
+                    if dot != self.active_dot:  # We've already moved the active_dot
+                        x, y, idx = self.dots[dot]
+                        self.canvas.move(dot, dx, dy)
+                        self.dots[dot] = (x + dx, y + dy, idx)
+            
+            # Update the lines
+            self.update_lines()
 
-            # Update connected lines for this dot
-            if self.active_dot in self.dot_lines:
-                for line in self.dot_lines[self.active_dot]:
-                    coords = list(self.canvas.coords(line))
-                    
-                    # Determine which end of the line to update based on proximity
-                    if self._distance(coords[:2], (x, y)) < self._distance(coords[2:], (x, y)):
-                        coords[:2] = [center_x, center_y]
-                    else:
-                        coords[2:] = [center_x, center_y]
-                    self.canvas.coords(line, *coords)
 
-            # Now update the dots dictionary with the new center
-            self.dots[self.active_dot] = (center_x, center_y, idx)
 
-    def _distance(self, point1, point2):
-        return ((point1[0] - point2[0]) ** 2 + (point1[1] - point2[1]) ** 2) ** 0.5
+
+    def update_lines(self):
+        for dot, lines in self.dot_lines.items():
+            x, y, idx = self.dots[dot]
+            for line in lines:
+                coords = self.canvas.coords(line)
+                if (coords[0], coords[1]) == (x, y):
+                    self.canvas.coords(line, x, y, coords[2], coords[3])
+                else:
+                    self.canvas.coords(line, coords[0], coords[1], x, y)
+
+
+    def get_connected_dots(self, index):
+        for group in self.connection_groups:
+            if index in group:
+                return set(group)
+        return set()
+
+
+    def find_all_connected_dots(self, index):
+        visited_dots = set()
+        to_visit = self.get_connected_dots(index)
+        all_connected_dots_idx = set(to_visit)
+        
+        while to_visit:
+            dot = to_visit.pop()
+            visited_dots.add(dot)
+
+            for group in self.connection_groups:
+                if dot in group:
+                    group_set = set(group)
+                    new_connections = group_set - visited_dots
+                    all_connected_dots_idx.update(new_connections)
+                    to_visit.update(new_connections)
+
+        # Return dot, not just idx
+        all_connected_dots = set([dot for dot in self.dots.keys() if self.dots[dot][2] in all_connected_dots_idx])    
+        return all_connected_dots
 
 
 if __name__ == "__main__":
