@@ -2,6 +2,19 @@
 
 Simple interface for manually annotating face image data (68 landmarks).
 
+## Preview
+
+![Walkthrough demo](walkthrough.webm.mov)
+
+Controls:
+* **Left Arrow** / **Right Arrow** : Previous image / Next image
+* **CTRL+S** : Save current landmark to file (overwrite)
+* **LeftClick** : Drag a point
+* **CTRL+LeftClick** : Drag a group
+
+![Alt text](image-1.png)
+
+
 ## Data setup
 
 Image and landmark data should exist in a directory like so:
@@ -50,14 +63,9 @@ python3 main.py
 Open a data directory:
 ![Alt text](image.png)
 
-First image in alphabetic order gets open with landmark data superposed:
-![Alt text](image-1.png)
 
-Controls:
+List of controls:
 * **Left Arrow** / **Right Arrow** : Previous image / Next image
 * **CTRL+S** : Save current landmark to file (overwrite)
 * **LeftClick** : Drag a point
 * **CTRL+LeftClick** : Drag a group
-
-Walkthrough demo
-![Alt text](walkthrough.webm.mov)
