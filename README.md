@@ -4,7 +4,7 @@ Simple interface for manually annotating face image data (68 landmarks).
 
 ## Preview
 
-![Walkthrough demo](walkthrough.webm.mov)
+![Walkthrough demo](assets/walkthrough.webm.mov)
 
 Controls:
 * **Left Arrow** / **Right Arrow** : Previous image / Next image
@@ -12,7 +12,7 @@ Controls:
 * **LeftClick** : Drag a point
 * **CTRL+LeftClick** : Drag a group
 
-![Alt text](image-1.png)
+![Preview](assets/image-1.png)
 
 
 ## Data setup
@@ -61,7 +61,7 @@ python3 main.py
 ```
 
 Open a data directory:
-![Alt text](image.png)
+![Alt text](assets/image.png)
 
 
 List of controls:
