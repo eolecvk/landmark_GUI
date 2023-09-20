@@ -19,7 +19,7 @@ class ImageApp:
         self.canvas.bind("<Button-1>", self.place_dot)
         self.canvas.bind("<B1-Motion>", self.on_b1_motion)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
-        self.canvas.bind("<Motion>", self.show_index_on_hover) # debug : check landmark indices
+        #self.canvas.bind("<Motion>", self.show_index_on_hover) # debug : check landmark indices
         self.prev_dot_idx = None
 
         menu = tk.Menu(root)
@@ -119,8 +119,6 @@ class ImageApp:
             for x, y in scaled_landmarks:
                 f.write("%f %f\n" % (x, y))
 
-
-
     def open_directory(self):
         dir_path = filedialog.askdirectory()
         if dir_path:
@@ -148,7 +146,6 @@ class ImageApp:
             self.current_image_index += 1
             self.open_image(self.image_files[self.current_image_index])
 
-
     def open_image(self, file_path=None):
         
         if file_path is None:
@@ -162,12 +159,8 @@ class ImageApp:
 
         self.image_path = file_path
 
-        # Clear previous landmarks and their connecting lines
-        for dot in self.dots.keys():
-            self.canvas.delete(dot)
-            if dot in self.dot_lines:
-                for line in self.dot_lines[dot]:
-                    self.canvas.delete(line)
+        # Clear everything on the canvas
+        self.canvas.delete("all")
         self.dots = {}
         self.dot_lines = {}
 
@@ -223,8 +216,9 @@ class ImageApp:
                 line = self.canvas.create_line(prev_dot_center, dot_center, fill=self.get_color(idx, line=True), width=self.line_size)
 
                 # Store the line references in the dictionary
-                self.dot_lines[prev_dot] = self.dot_lines.get(prev_dot, []) + [line]
-                self.dot_lines[dot] = self.dot_lines.get(dot, []) + [line]
+                #self.dot_lines[prev_dot] = self.dot_lines.get(prev_dot, []) + [line]
+                self.dot_lines[(prev_dot, dot)] = line
+                self.dot_lines[(dot, prev_dot)] = line
 
             prev_dot = dot
         
@@ -236,8 +230,8 @@ class ImageApp:
             start_center = ((self.canvas.coords(start_dot)[0] + self.canvas.coords(start_dot)[2]) / 2, (self.canvas.coords(start_dot)[1] + self.canvas.coords(start_dot)[3]) / 2)
             end_center = ((self.canvas.coords(end_dot)[0] + self.canvas.coords(end_dot)[2]) / 2, (self.canvas.coords(end_dot)[1] + self.canvas.coords(end_dot)[3]) / 2)
             line = self.canvas.create_line(start_center, end_center, fill=self.get_color(start, line=True), width=self.line_size)
-            self.dot_lines[start_dot] = self.dot_lines.get(start_dot, []) + [line]
-            self.dot_lines[end_dot] = self.dot_lines.get(end_dot, []) + [line]
+            self.dot_lines[(start_dot, end_dot)] = line
+            self.dot_lines[(end_dot, start_dot)] = line
 
 
     def place_dot(self, event):
@@ -288,18 +282,20 @@ class ImageApp:
             # Update the lines
             self.update_lines()
 
-
-
-
     def update_lines(self):
-        for dot, lines in self.dot_lines.items():
-            x, y, idx = self.dots[dot]
-            for line in lines:
-                coords = self.canvas.coords(line)
-                if (coords[0], coords[1]) == (x, y):
-                    self.canvas.coords(line, x, y, coords[2], coords[3])
-                else:
-                    self.canvas.coords(line, coords[0], coords[1], x, y)
+        if self.dot_lines is None:
+            return
+        for key, line in self.dot_lines.items():
+
+            # Ensure key is a tuple of two items (dot1, dot2)
+            if not isinstance(key, tuple) or len(key) != 2:
+                print(f"Unexpected key in dot_lines: {key}")
+                continue
+
+            dot1, dot2 = key
+            x1, y1, idx1 = self.dots[dot1]
+            x2, y2, idx2 = self.dots[dot2]
+            self.canvas.coords(line, x1, y1, x2, y2)
 
 
     def get_connected_dots(self, index):
