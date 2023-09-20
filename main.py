@@ -65,7 +65,17 @@ class ImageApp:
             ]
 
         self.connection_groups = [rng for rng, _ in self.color_groups]
-        self.open_image('/home/eole/Downloads/Chimp_FilmRip_MVP2MostVerticalPrimate.2001.0119_0.png')
+
+        self.image_files_generator = None
+        self.current_image_path = None
+        #self.open_image('/home/eole/Downloads/Chimp_FilmRip_MVP2MostVerticalPrimate.2001.0119_0.png')
+
+    def get_image_files(self, dir_path):
+        valid_extensions = ['.png']
+        for fname in sorted(os.listdir(dir_path)):
+            if any(fname.endswith(ext) for ext in valid_extensions):
+                yield os.path.join(dir_path, fname)
+
 
     def show_index_on_hover(self, event):
         # Get the dot's index from the tag
@@ -121,19 +131,17 @@ class ImageApp:
 
     def open_directory(self):
         dir_path = filedialog.askdirectory()
-        if dir_path:
-            # Assuming images are in PNG format for this example
-            # You can adjust this to handle other image formats or even multiple formats
-            images = sorted([os.path.join(dir_path, fname) for fname in os.listdir(dir_path)
-                        if any([fname.endswith(valid_extension) for valid_extension in ['.png', '.jpg', '.jpeg']] )])
-            if images:
-                self.open_image(images[0])
-                # Store all images in a list for navigation purposes
-                self.image_files = images
-                self.current_image_index = 0
-            else:
-                messagebox.showerror("Error", "No image files found in the selected directory!")
-                return
+        if not dir_path:
+            return
+
+        # Populate the list of image files
+        self.image_files = list(self.get_image_files(dir_path))
+
+        if self.image_files:
+            self.current_image_index = 0
+            self.open_image(self.image_files[0])
+        else:
+            messagebox.showerror("Error", "No image files found in the selected directory!")
 
 
     def previous_image(self, event=None):
@@ -154,7 +162,10 @@ class ImageApp:
         if not file_path:
             return
 
-        if file_path in self.image_files:
+        if file_path not in self.image_files:
+            self.image_files.append(file_path)
+            self.current_image_index = len(self.image_files) - 1
+        else:
             self.current_image_index = self.image_files.index(file_path)
 
         self.image_path = file_path
