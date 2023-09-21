@@ -4,8 +4,6 @@ Simple interface for manually annotating face image data (68 landmarks).
 
 ## Preview
 
-![Walkthrough demo](assets/walkthrough.webm.mov)
-
 Controls:
 * **Left Arrow** / **Right Arrow** : Previous image / Next image
 * **CTRL+S** : Save current landmark to file (overwrite)
