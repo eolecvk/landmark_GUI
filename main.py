@@ -68,6 +68,17 @@ class ImageApp:
 
         self.image_files_generator = None
         self.current_image_path = None
+
+        if args.dir:
+            self.dir_path = args.dir
+            # Populate the list of image files
+            self.image_files = list(self.get_image_files(self.dir_path))
+            if self.image_files:
+                self.current_image_index = 0
+                self.open_image(self.image_files[0])
+            else:
+                raise Exception("No image files found in the selected directory!")
+
         #self.open_image('/home/eole/Downloads/Chimp_FilmRip_MVP2MostVerticalPrimate.2001.0119_0.png')
 
     def get_image_files(self, dir_path):
@@ -338,6 +349,12 @@ class ImageApp:
 
 
 if __name__ == "__main__":
+
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dir", type=str, help="Path to directory containing images and landmarks")
+    args = parser.parse_args()
+
     root = tk.Tk()
     root.geometry('800x800')
     app = ImageApp(root)
