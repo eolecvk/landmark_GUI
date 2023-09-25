@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter import Canvas
 from PIL import Image, ImageTk
+from natsort import natsorted
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -76,7 +77,7 @@ class ImageApp:
         if args.dir:
             self.dir_path = args.dir
             # Populate the list of image files
-            self.image_files = list(self.get_image_files(self.dir_path))
+            self.image_files = natsorted(list(self.get_image_files(self.dir_path)))
             if self.image_files:
                 self.current_image_index = 0
                 self.open_image(self.image_files[0])
@@ -183,7 +184,7 @@ class ImageApp:
             return
 
         # Populate the list of image files
-        self.image_files = list(self.get_image_files(dir_path))
+        self.image_files = natsorted(list(self.get_image_files(dir_path)))
 
         if self.image_files:
             self.current_image_index = 0
