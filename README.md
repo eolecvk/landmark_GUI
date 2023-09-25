@@ -67,4 +67,3 @@ List of controls:
 * **CTRL+S** : Save current landmark to file (overwrite)
 * **LeftClick** : Drag a point
 * **CTRL+LeftClick** : Drag a group
-* **CTRL+D** : Delete image and landmark data, go to Next image
