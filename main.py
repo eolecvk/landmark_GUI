@@ -163,16 +163,15 @@ class ImageApp:
             user_response = messagebox.askokcancel("Confirmation", confirmation_message)
             
             if user_response:  # Proceed only if the user clicks OK
+                self.image_files.remove(self.image_path)
                 for filename in matching_files:
                     try:
                         os.remove(filename)
                     except OSError as e:
                         print(f"Error: {filename} : {e.strerror}")
-                        self.image_files.remove(self.image_path)
-
-
+                        
                 self.image_path = self.image_files[self.current_image_index]
-                self.open_image(image_path)
+                self.open_image(self.image_path)
         else:
             messagebox.showerror("Error", "No image is currently open!")
 
