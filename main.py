@@ -5,17 +5,20 @@ from PIL import Image, ImageTk
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import glob
 
 class ImageApp:
     def __init__(self, root):
         self.root = root
         self.root.title('Image Dot Mover')
         self.root.bind("<Control-s>", lambda event=None: self.save_landmarks())
+        self.root.bind("<Control-d>", lambda event=None: self.delete_image())
 
         self.canvas = Canvas(root)
         self.canvas.pack(fill=tk.BOTH, expand=tk.YES)
 
         self.canvas.bind("<Control-Button-1>", self.place_dots)
+        
         self.canvas.bind("<Button-1>", self.place_dot)
         self.canvas.bind("<B1-Motion>", self.on_b1_motion)
         self.canvas.bind("<ButtonRelease-1>", self.on_release)
@@ -30,6 +33,7 @@ class ImageApp:
         file_menu.add_command(label="Open directory...", command=self.open_directory)
         file_menu.add_command(label="Open file...", command=self.open_image)
         file_menu.add_command(label="Save", command=self.save_landmarks)
+        file_menu.add_command(label="Delete", command=self.delete_image)
         file_menu.add_command(label="Exit", command=root.quit)
 
         self.image_files = []  # To store list of images in a directory
@@ -139,6 +143,40 @@ class ImageApp:
         with open(self.image_path[:-4] + "_ldmks.txt", "w") as f:
             for x, y in scaled_landmarks:
                 f.write("%f %f\n" % (x, y))
+    
+    
+    def delete_image(self):
+        if self.image_path:
+
+            # Collect a list of all files in the current directory that start with self.image_path
+            matching_files = glob.glob(f"{self.image_path[:-4]}*")
+
+            # If no matching files, return
+            if not matching_files:
+                return
+
+            # Create a string that lists the files for the confirmation message
+            files_list = "\n".join(matching_files)
+            confirmation_message = f"Do you want to delete the following files?\n\n{files_list}"
+
+            # Show confirmation dialog
+            user_response = messagebox.askokcancel("Confirmation", confirmation_message)
+            
+            if user_response:  # Proceed only if the user clicks OK
+                for filename in matching_files:
+                    try:
+                        os.remove(filename)
+                    except OSError as e:
+                        print(f"Error: {filename} : {e.strerror}")
+                        self.image_files.remove(self.image_path)
+
+
+                self.image_path = self.image_files[self.current_image_index]
+                self.open_image(image_path)
+        else:
+            messagebox.showerror("Error", "No image is currently open!")
+
+
 
     def open_directory(self):
         dir_path = filedialog.askdirectory()
