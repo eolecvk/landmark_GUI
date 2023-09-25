@@ -57,7 +57,7 @@ source .venv/bin/activate
 
 Launch GUI app
 ```
-python3 main.py
+python3 main.py --dir <your_image_dir_path>
 ```
 
 Open a data directory:
