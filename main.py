@@ -149,8 +149,14 @@ class ImageApp:
     def delete_image(self):
         if self.image_path:
 
-            # Collect a list of all files in the current directory that start with self.image_path
-            matching_files = glob.glob(f"{self.image_path[:-4]}*")
+            # Collect a list of all files with expected extensions in the current directory, that start with self.image_path
+            possible_matches = [
+                f"{self.image_path[:-4]}.png",
+                f"{self.image_path[:-4]}.jpg",
+                f"{self.image_path[:-4]}_ldmks.txt",
+                f"{self.image_path[:-4]}_bbox.txt",
+                ]
+            matching_files = [f for f in possible_matches if os.path.exists(f)]
 
             # If no matching files, return
             if not matching_files:
