@@ -71,16 +71,17 @@ class ImageApp:
             raise Exception("Please specify a directory using --dir")
         
         elif args.render:
-            self.dir_path = args.render
+            self.dir_path = args.dir
+            self.save_path = args.render
             # Populate the list of image files
             self.image_files = natsorted(list(self.get_image_files(self.dir_path)))
             if self.image_files:
                 for file_path in self.image_files:
-                    self.save_render(file_path, self.dir_path)
+                    self.save_render(file_path, self.save_path)
             else:
                 raise Exception("No image files found in the selected directory!")
 
-        if args.dir:
+        elif args.dir:
             self.dir_path = args.dir
             # Populate the list of image files
             self.image_files = natsorted(list(self.get_image_files(self.dir_path)))
@@ -131,23 +132,31 @@ class ImageApp:
 
         # Open the original image at file_path
         image = Image.open(file_path)
+        
+        # Determine scaling factors
+        width_scale = 800 / image.width
+        height_scale = 800 / image.height
+
+        # Resize the image to 800x800
+        image = image.resize((800, 800))
 
         # Create a drawing context
         draw = ImageDraw.Draw(image)
 
-        # Read landmarks
+        # Read landmarks and scale them
         landmarks = self.read_landmarks_from_file(file_path)
+        scaled_landmarks = [(x * width_scale, y * height_scale) for x, y in landmarks]
 
         # Step 1: Draw all dots first
-        for idx, (x, y) in enumerate(landmarks):
+        for idx, (x, y) in enumerate(scaled_landmarks):
             dot_left_up = (x - self.dot_size, y - self.dot_size)
             dot_right_down = (x + self.dot_size, y + self.dot_size)
             dot_color = self.get_color(idx)
             draw.ellipse([dot_left_up, dot_right_down], fill=dot_color)
 
         # Step 2: Connect the dots based on the specified groups
-        prev_x, prev_y = landmarks[0]
-        for idx, (x, y) in enumerate(landmarks[1:], 1):
+        prev_x, prev_y = scaled_landmarks[0]
+        for idx, (x, y) in enumerate(scaled_landmarks[1:], 1):
             should_connect = any([idx-1 in group and idx in group for group in self.connection_groups])
             if should_connect:
                 line_color = self.get_color(idx, line=True)
@@ -157,14 +166,15 @@ class ImageApp:
         # Special case for loops (for example, mouth and eyes)
         loops = [(59, 48), (67, 60), (41, 36), (42, 47)]
         for start, end in loops:
-            start_x, start_y = landmarks[start]
-            end_x, end_y = landmarks[end]
+            start_x, start_y = scaled_landmarks[start]
+            end_x, end_y = scaled_landmarks[end]
             line_color = self.get_color(start, line=True)
             draw.line([(start_x, start_y), (end_x, end_y)], fill=line_color, width=self.line_size)
 
         # Save the image with dots and lines
         save_path = os.path.join(save_dir, os.path.basename(file_path))
         image.save(save_path)
+
 
 
 
